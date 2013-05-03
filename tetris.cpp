@@ -56,15 +56,15 @@ struct ScreenField
 	uint8_t blockNr;
 };
 
-ScreenField screen[ROWS][COLUMNS];
+ScreenField screen[ROWS][COLUMNS+1];
 
 
 struct Block
 {
-        uint8_t X1 : 3;
-	uint8_t X2 : 3;
-	uint8_t X3 : 3;
-	uint8_t X4 : 3;
+        uint8_t X1 : 4; //X. == 8 when inactive
+	uint8_t X2 : 4;
+	uint8_t X3 : 4;
+	uint8_t X4 : 4;
 
 	uint8_t Y1 : 4;
 	uint8_t Y2 : 4;
@@ -93,6 +93,7 @@ struct Block
 
 
 Block blocks[20];
+Block *activeBlock;
 uint8_t numberOfBlocks = 0;
 
 bool generate_new_block()
@@ -125,21 +126,33 @@ bool generate_new_block()
 
 	if( FIELD(1) || FIELD(2) || FIELD(3) || FIELD(4) ) return 0;
 	blocks[numberOfBlocks] = a;
+	activeBlock = &(blocks[numberOfBlocks]);
 }
 
 
 void print_screen()
 {
 	system("clear");
+	REP(x,COLUMNS+2)
+	{
+		printf("-");
+	}
+	printf("\n");
 	REP(y,ROWS)
 	{
+		printf("|");
 		REP(x,COLUMNS)
 		{
 			if( screen[y][x].value ) printf("0");
-			else printf("X");
+			else printf(" ");
 		}
-		printf("\n");
+		printf("|\n");
 	}
+	REP(x,COLUMNS+2)
+	{
+		printf("-");
+	}
+	printf("\n");
 }
 
 
@@ -171,15 +184,6 @@ int8_t newElementIndex = -1;
 
 void update_screen()
 {
-	if( newElementIndex != -1 )
-	{
-		numberOfBlocks = newElementIndex;
-		newElementIndex = -1;
-		if( !  generate_new_block() )
-		{
-			exit(0);
-		}
-	}
 	for(uint8_t i = 1; i <= numberOfBlocks; ++i)
 	{
 		if( ! blocks[i].locked )
@@ -190,10 +194,18 @@ void update_screen()
 			++blocks[i].Y4;
 			if( mark_if_locked(i) )
 			{
-				printf("AAAAAAAAAAAAAAAAAAAA %d\n",i);
 				blocks[i].locked = true;
 				newElementIndex = numberOfBlocks+1;
 			}
+		}
+	}
+	if( newElementIndex != -1 )
+	{
+		numberOfBlocks = newElementIndex;
+		newElementIndex = -1;
+		if( !  generate_new_block() )
+		{
+			exit(0);
 		}
 	}
 	clear_screen();
@@ -209,6 +221,47 @@ void update_screen()
 }
 
 
+#define XACTIVECOORS(a) (activeBlock->X ## a) 
+#define TOUCHLEFT(a) (XACTIVECOORS(a) == 0)
+#define TOUCHRIGHT(a) (XACTIVECOORS(a) == (COLUMNS-1))
+
+void shiftActiveLeft()
+{
+	if( activeBlock->locked || TOUCHLEFT(1) || TOUCHLEFT(2) || TOUCHLEFT(3) || TOUCHLEFT(4) ) return;
+	--XACTIVECOORS(1);
+	--XACTIVECOORS(2);
+	--XACTIVECOORS(3);
+	--XACTIVECOORS(4);
+}
+
+void shiftActiveRight()
+{
+	if( activeBlock->locked || TOUCHRIGHT(1) || TOUCHRIGHT(2) || TOUCHRIGHT(3) || TOUCHRIGHT(4) ) return;
+	++XACTIVECOORS(1);
+	++XACTIVECOORS(2);
+	++XACTIVECOORS(3);
+	++XACTIVECOORS(4);
+}
+
+
+void checkForLines()
+{
+	for(uint8_t Y = 0; Y < ROWS; ++Y)
+	{
+		bool line = true;
+		for(uint8_t X = 0; X < COLUMNS; ++X)
+		{
+			if( board[Y][X].active == false )
+			{
+				break;
+			}
+		}
+		if( line )
+		{
+
+		}
+	}
+}
 
 int main(int argc, char **argv)
 {
@@ -219,7 +272,16 @@ int main(int argc, char **argv)
 	{
 		update_screen();
 		print_screen();
-		printf("\n\n");
-		sleep(1);
+		char x;
+		printf("MOVE : ");
+		while( true )
+		{
+			scanf("%c",&x);
+			if( x == '.' ) shiftActiveRight();
+			else if( x == ',' ) shiftActiveLeft();
+			else if( x == '/' ) {}
+			else continue;
+			break;
+		}
 	}
 }
